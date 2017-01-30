@@ -151,8 +151,10 @@ function build()
     	CROSS_COMPILE=mipsel-linux
         export CC=$CROSS_COMPILE-gcc
     	export CXX=$CROSS_COMPILE-g++
-        export GLIB_INCLUDE_PATH=$APPLIBS_TARGET_DIR/usr/local/include/glib-2.0/
-    	export GLIB_LIBRARY_PATH=$APPLIBS_TARGET_DIR/usr/local/lib/
+	export GLIB_INCLUDE_PATH=${WORK_DIR}/rootfs/usr/local/include/glib-2.0/
+	export GLIB_LIBRARY_PATH=${WORK_DIR}/rootfs/usr/local/lib
+	export GLIB_CONFIG_INCLUDE_PATH=${WORK_DIR}/rootfs/usr/local/lib/glib-2.0/
+
         export GLIBS='-lglib-2.0 -lintl -lz'
     elif [ $RDK_PLATFORM_SOC = "entropic" ]; then
       export SDK_CONFIG=stb597_V3_xi3
@@ -235,10 +237,8 @@ function rebuild()
 function install()
 {
       
-   if [ ${RDK_PLATFORM_SOC}${RDK_PLATFORM_DEVICE} = "intelxg1" ];then
-    mkdir -p ${RDK_FSROOT_PATH}/usr/bin/
-    cp -v ${RDK_SCRIPTS_PATH}/IARM_event_sender ${RDK_FSROOT_PATH}/usr/bin/
-   fi
+   mkdir -p ${RDK_FSROOT_PATH}/usr/bin/
+   cp -v ${RDK_SCRIPTS_PATH}/IARM_event_sender ${RDK_FSROOT_PATH}/usr/bin/
    true  
 }
 
