@@ -25,6 +25,10 @@
 #include "sysMgr.h"
 #include "libIARMCore.h"
 #include <glib.h>
+#ifdef CTRLM_ENABLED
+#include "ctrlm_ipc_device_update.h"
+#endif
+
 IARM_Result_t sendIARMEvent(GString* currentEventName, unsigned char eventStatus);
 IARM_Result_t sendIARMEventPayload(GString* currentEventName, char *eventPayload);
 
@@ -45,7 +49,6 @@ static struct eventList{
 #define EVENT_INTRUSION "IntrusionEvent"
 #define INTRU_ABREV '+' // last character for abreviated buffer
 #define JSON_TERM "\"}]}" // valid termination for overflowed buffer
-
 
 /* EISS Events Usage Guide:                                                               */
 /* 1. EISS Filter Status set                                                              */
@@ -74,10 +77,23 @@ int main(int argc,char *argv[])
     else if (argc == 4)
     {
         char eventPayload[ IARM_BUS_SYSMGR_Intrusion_MaxLen+1 ]; // iarm payload is limited in size. this can check for overflow
-	unsigned short full_len=strlen(argv[3]);
+	unsigned short full_len;
         g_string_assign(currentEventName,argv[1]);
         g_message(" Send %s",currentEventName->str );
-        strncpy( eventPayload, argv[3], sizeof(eventPayload) );
+
+        if ( !(g_ascii_strcasecmp(currentEventName->str,"PeripheralUpgradeEvent")) )
+        {
+            full_len=strlen(argv[3]) + strlen(argv[2]) + 1;
+            strncpy( eventPayload, argv[2], sizeof(eventPayload) );
+            strncat( eventPayload, ":", sizeof(eventPayload) );
+            strncat( eventPayload, argv[3], sizeof(eventPayload) );
+        }
+        else
+        {
+            full_len=strlen(argv[3]);
+            strncpy( eventPayload, argv[3], sizeof(eventPayload) );
+        }
+
         eventPayload[sizeof(eventPayload)-1]='\0'; // null terminated in case of overflow
         // check if input event status was too long
         if ( strnlen( eventPayload, sizeof(eventPayload) ) < full_len )
@@ -224,6 +240,26 @@ IARM_Result_t sendIARMEventPayload(GString* currentEventName, char *eventPayload
 
              IARM_Bus_BroadcastEvent(IARM_BUS_SYSMGR_NAME, (IARM_EventId_t) IARM_BUS_SYSMGR_EVENT_EISS_APP_ID_UPDATE, (void *)&eventData, sizeof(eventData));
 	}
+        #ifdef CTRLM_ENABLED
+        else if( !(g_ascii_strcasecmp(currentEventName->str,"PeripheralUpgradeEvent")))
+        {
+             g_message("IARM_event_sender entered case for PeripheralUpgradeEvent : %s\r\n",eventPayload);
+             ctrlm_device_update_iarm_call_update_available_t firmwareInfo;
+             firmwareInfo.api_revision=CTRLM_DEVICE_UPDATE_IARM_BUS_API_REVISION;
+             memset(firmwareInfo.firmwareLocation,0,CTRLM_DEVICE_UPDATE_PATH_LENGTH);
+             memset(firmwareInfo.firmwareNames,0,CTRLM_DEVICE_UPDATE_PATH_LENGTH);
+
+             memcpy(firmwareInfo.firmwareLocation, strtok(eventPayload, ":"),CTRLM_DEVICE_UPDATE_PATH_LENGTH);
+             memcpy(firmwareInfo.firmwareNames, strtok(NULL, ":"),CTRLM_DEVICE_UPDATE_PATH_LENGTH);
+             g_message("IARM_event_sender entered case for PeripheralUpgradeEvent : %s and %s\r\n",firmwareInfo.firmwareLocation,firmwareInfo.firmwareNames);
+
+             IARM_Bus_Call(CTRLM_MAIN_IARM_BUS_NAME,
+            		 CTRLM_DEVICE_UPDATE_IARM_CALL_UPDATE_AVAILABLE,
+                            (void *)&firmwareInfo,
+                            sizeof(firmwareInfo));
+          
+        }
+        #endif
         else {
 		g_message("There are no matching IARM events for %s",currentEventName->str);
 	}
