@@ -31,6 +31,7 @@
 
 IARM_Result_t sendIARMEvent(GString* currentEventName, unsigned char eventStatus);
 IARM_Result_t sendIARMEventPayload(GString* currentEventName, char *eventPayload);
+IARM_Result_t sendCustomIARMEvent(int stateId, int state, int error);
 
 static struct eventList{
 	gchar* eventName;
@@ -65,6 +66,18 @@ int main(int argc,char *argv[])
     g_message("IARM_event_sender  Entering %d\r\n", getpid());
     GString *currentEventName=g_string_new(NULL);
 
+    if (argc == 5 && !strcmp("CustomEvent", argv[1]))
+    {
+        int stateId = atoi(argv[2]);
+        int state = atoi(argv[3]);
+        int error = atoi(argv[4]);
+        
+        g_message(">>>>> Send Custom Event stateId:%d state:%d error:%d", stateId, state, error );
+        
+        sendCustomIARMEvent(stateId, state, error);
+        
+        return 0;
+    }
     if (argc == 3)
     {
         unsigned char eventStatus;
@@ -140,9 +153,36 @@ int main(int argc,char *argv[])
     else
     {
         g_message("Usage: %s <event name > <event status> \n",argv[0]);
+        g_message("Usage: %s CustomEvent <event stateId> <event state> <event error> \n",argv[0]);
         g_message("(%d)\n",argc );
         return 1;
     }
+}
+
+IARM_Result_t sendCustomIARMEvent(int stateId, int state, int error)
+{
+    IARM_Result_t retCode = IARM_RESULT_SUCCESS;
+    gboolean eventMatch = FALSE;
+    IARM_Bus_SYSMgr_EventData_t eventData;
+    
+    IARM_Bus_Init("CustomEvent");
+    IARM_Bus_Connect();
+    
+    eventData.data.systemStates.stateId = stateId;
+    eventData.data.systemStates.state = state;
+    eventData.data.systemStates.error = error;
+    
+    retCode = IARM_Bus_BroadcastEvent(IARM_BUS_SYSMGR_NAME, (IARM_EventId_t) IARM_BUS_SYSMGR_EVENT_SYSTEMSTATE, (void *)&eventData, sizeof(eventData));
+    
+    if(retCode == IARM_RESULT_SUCCESS)
+        g_message(">>>>> IARM SUCCESS  Event - State Id = %d, Event status = %d", stateId, eventData.data.eissEventData.filterStatus);
+    else
+        g_message(">>>>> IARM FAILURE  Event - State Id = %d, Event status = %d", stateId, eventData.data.eissEventData.filterStatus);
+    
+    IARM_Bus_Disconnect();
+    IARM_Bus_Term();
+
+    return retCode;
 }
 
 IARM_Result_t sendIARMEvent(GString* currentEventName,unsigned char eventStatus)
