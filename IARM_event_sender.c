@@ -66,18 +66,6 @@ int main(int argc,char *argv[])
     g_message("IARM_event_sender  Entering %d\r\n", getpid());
     GString *currentEventName=g_string_new(NULL);
 
-    if (argc == 5 && !strcmp("CustomEvent", argv[1]))
-    {
-        int stateId = atoi(argv[2]);
-        int state = atoi(argv[3]);
-        int error = atoi(argv[4]);
-        
-        g_message(">>>>> Send Custom Event stateId:%d state:%d error:%d", stateId, state, error );
-        
-        sendCustomIARMEvent(stateId, state, error);
-        
-        return 0;
-    }
     if (argc == 3)
     {
         unsigned char eventStatus;
@@ -123,6 +111,18 @@ int main(int argc,char *argv[])
 
         g_message(">>>>> Send IARM_BUS_NAME EVENT current Event Name =%s,evenstatus=%s",currentEventName->str,eventPayload);
         sendIARMEventPayload(currentEventName,eventPayload);
+        return 0;
+    }
+    else if (argc == 5 && !strcmp("CustomEvent", argv[1]))
+    {
+        int stateId = atoi(argv[2]);
+        int state = atoi(argv[3]);
+        int error = atoi(argv[4]);
+        
+        g_message(">>>>> Send Custom Event stateId:%d state:%d error:%d", stateId, state, error );
+        
+        sendCustomIARMEvent(stateId, state, error);
+        
         return 0;
     }
     else if (argc == 6)
