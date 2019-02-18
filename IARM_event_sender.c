@@ -23,6 +23,9 @@
 #include "libIBus.h"
 #include "libIBusDaemon.h"
 #include "sysMgr.h"
+#ifdef PLATFORM_SUPPORTS_RDMMGR
+#include "rdmMgr.h"
+#endif
 #include "libIARMCore.h"
 #include <glib.h>
 #ifdef CTRLM_ENABLED
@@ -176,6 +179,7 @@ IARM_Result_t sendCustomIARMEvent(int stateId, int state, int error)
     return retCode;
 }
 
+
 IARM_Result_t sendIARMEvent(GString* currentEventName,unsigned char eventStatus)
 {
 	IARM_Result_t retCode = IARM_RESULT_SUCCESS;
@@ -198,6 +202,17 @@ IARM_Result_t sendIARMEvent(GString* currentEventName,unsigned char eventStatus)
                 g_message(">>>>> IARM FAILURE  Event - IARM_BUS_SYSMGR_EVENT_EISS_FILTER_STATUS,Event status =%d",eventData.data.eissEventData.filterStatus);
 
         }
+#ifdef PLATFORM_SUPPORTS_RDMMGR
+        if( !(g_ascii_strcasecmp(currentEventName->str,"AppDownloadEvent")))
+        {
+            g_message(">>>>> Identified App Download status message");
+            retCode=IARM_Bus_BroadcastEvent(IARM_BUS_RDMMGR_NAME, (IARM_EventId_t) IARM_BUS_RDMMGR_EVENT_APPDOWNLOADS_CHANGED, (void *)&eventStatus, sizeof(eventStatus));
+            if(retCode == IARM_RESULT_SUCCESS)
+                g_message(">>>>> IARM SUCCESS  Event - IARM_BUS_SYSMGR_EVENT_APP_DNLD ");
+            else
+                g_message(">>>>> IARM FAILURE  Event - IARM_BUS_SYSMGR_EVENT_APP_DNLD ");
+        }
+#endif  
         else
         {
             for ( i=0; i < len; i++ )
