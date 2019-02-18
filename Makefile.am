@@ -24,6 +24,7 @@ AM_CFLAGS = $(DBUS_CFLAGS) $(DIRECT_CFLAGS) $(FUSION_CFLAGS) $(GLIB_CFLAGS) \
 	    -I=${includedir}/rdk/iarmbus \
 	    -I=${includedir}/rdk/iarmmgrs/power \
 	    -I=${includedir}/rdk/iarmmgrs/sysmgr \
+	    -I=${includedir}/rdk/iarmmgrs/rdmmgr \
 	    -I=${includedir}/rdk/iarmmgrs-hal
 
 bin_PROGRAMS = IARM_event_sender
