@@ -31,6 +31,9 @@
 #ifdef CTRLM_ENABLED
 #include "ctrlm_ipc_device_update.h"
 #endif
+#ifdef MEDIA_CLIENT
+#include "netsrvmgrIarm.h"
+#endif
 
 IARM_Result_t sendIARMEvent(GString* currentEventName, unsigned char eventStatus);
 IARM_Result_t sendIARMEventPayload(GString* currentEventName, char *eventPayload);
@@ -202,6 +205,16 @@ IARM_Result_t sendIARMEvent(GString* currentEventName,unsigned char eventStatus)
                 g_message(">>>>> IARM FAILURE  Event - IARM_BUS_SYSMGR_EVENT_EISS_FILTER_STATUS,Event status =%d",eventData.data.eissEventData.filterStatus);
 
         }
+#ifdef MEDIA_CLIENT
+        if( !(g_ascii_strcasecmp(currentEventName->str,"WiFiInterfaceStateEvent")))
+        {
+             IARM_BUS_NetSrvMgr_Iface_EventData_t param = {0};
+             param.isInterfaceEnabled = eventStatus ? true : false;
+             retCode=IARM_Bus_BroadcastEvent(IARM_BUS_NM_SRV_MGR_NAME, (IARM_EventId_t) IARM_BUS_NETWORK_MANAGER_EVENT_WIFI_INTERFACE_STATE, (void *)&param, sizeof(param));
+             g_message(">>>>> IARM %s  Event - IARM_BUS_NETWORK_MANAGER_EVENT_WIFI_INTERFACE_STATE, interface enabled = %d",
+                 (retCode == IARM_RESULT_SUCCESS) ? "SUCCESS" : "FAILURE", param.isInterfaceEnabled);
+        }
+#endif // MEDIA_CLIENT
 #ifdef PLATFORM_SUPPORTS_RDMMGR
         if( !(g_ascii_strcasecmp(currentEventName->str,"AppDownloadEvent")))
         {
