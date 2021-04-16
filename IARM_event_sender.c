@@ -122,6 +122,21 @@ int main(int argc,char *argv[])
         
         return 0;
     }
+    else if (argc == 5 && !strcmp("USBMountChangedEvent", argv[1]))
+    {
+        g_string_assign(currentEventName,argv[1]);
+
+        size_t n = 1024;
+        char eventPayload[n];
+        snprintf(eventPayload, n, "%s:%s:%s", argv[2], argv[3], argv[4]);
+        eventPayload[n - 1] = '\0';
+
+        g_message(">>>>> Send USBMountChangedEvent %s", eventPayload);
+
+        sendIARMEventPayload(currentEventName,eventPayload);
+
+        return 0;
+    }
     else if (argc == 6)
     {
         g_string_assign(currentEventName,argv[1]);
@@ -319,6 +334,25 @@ IARM_Result_t sendIARMEventPayload(GString* currentEventName, char *eventPayload
           
         }
         #endif
+    else if( !(g_ascii_strcasecmp(currentEventName->str,"USBMountChangedEvent")))
+    {
+        IARM_Bus_SYSMgr_EventData_t eventData;
+        eventData.data.usbMountData.mounted = atoi(strtok(eventPayload, ":"));
+        strncpy(eventData.data.usbMountData.device, strtok(NULL, ":"), sizeof(eventData.data.usbMountData.device) - 1);
+        eventData.data.usbMountData.device[sizeof(eventData.data.usbMountData.device) - 1] = '\0';
+        strncpy(eventData.data.usbMountData.dir, strtok(NULL, ":"), sizeof(eventData.data.usbMountData.dir) - 1);
+        eventData.data.usbMountData.dir[sizeof(eventData.data.usbMountData.dir) - 1] = '\0';
+
+        g_message("IARM_event_sender entered case for USBMountChangedEvent : %d %s %s",
+                  eventData.data.usbMountData.mounted,
+                  eventData.data.usbMountData.device,
+                  eventData.data.usbMountData.dir);
+
+        retCode = IARM_Bus_BroadcastEvent(IARM_BUS_SYSMGR_NAME,
+                (IARM_EventId_t) IARM_BUS_SYSMGR_EVENT_USB_MOUNT_CHANGED, (void *)&eventData, sizeof(eventData));
+
+        g_message("IARM Event %d  retCode:%d", IARM_BUS_SYSMGR_EVENT_USB_MOUNT_CHANGED, retCode);
+    }
         else {
 		g_message("There are no matching IARM events for %s",currentEventName->str);
 	}
