@@ -2,7 +2,7 @@
  * If not stated otherwise in this file or this component's Licenses.txt file the
  * following copyright and licenses apply:
  *
- * Copyright 2016 RDK Management
+ * Copyright 2021 RDK Management
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,9 @@
 #include "libIBus.h"
 #include "libIBusDaemon.h"
 #include "sysMgr.h"
+#ifdef HAS_MAINTENANCE_MANAGER
+#include "maintenanceMGR.h"
+#endif
 #ifdef PLATFORM_SUPPORTS_RDMMGR
 #include "rdmMgr.h"
 #endif
@@ -38,7 +41,6 @@
 IARM_Result_t sendIARMEvent(GString* currentEventName, unsigned char eventStatus);
 IARM_Result_t sendIARMEventPayload(GString* currentEventName, char *eventPayload);
 IARM_Result_t sendCustomIARMEvent(int stateId, int state, int error);
-
 static struct eventList{
 	gchar* eventName;
 	unsigned char sysStateEvent;
@@ -220,6 +222,23 @@ IARM_Result_t sendIARMEvent(GString* currentEventName,unsigned char eventStatus)
                 g_message(">>>>> IARM FAILURE  Event - IARM_BUS_SYSMGR_EVENT_EISS_FILTER_STATUS,Event status =%d",eventData.data.eissEventData.filterStatus);
 
         }
+#ifdef HAS_MAINTENANCE_MANAGER
+        if ( !(g_ascii_strcasecmp(currentEventName->str,"MaintenanceMGR")) )
+        {
+            IARM_Bus_MaintMGR_EventData_t infoStatus;
+
+            memset( &infoStatus, 0, sizeof(IARM_Bus_MaintMGR_EventData_t) );
+            g_message(">>>>> Identified MaintenanceMGR");
+            infoStatus.data.maintenance_module_status.status = (IARM_Maint_module_status_t)eventStatus;
+            retCode=IARM_Bus_BroadcastEvent(IARM_BUS_MAINTENANCE_MGR_NAME,(IARM_EventId_t)IARM_BUS_MAINTENANCEMGR_EVENT_UPDATE, (void *)&infoStatus, sizeof(infoStatus));
+            g_message(">>>>> IARM %s  Event  = %d",(retCode == IARM_RESULT_SUCCESS) ? "SUCCESS" : "FAILURE",\
+                    infoStatus.data.maintenance_module_status.status);
+            IARM_Bus_Disconnect();
+            IARM_Bus_Term();
+            g_message("IARM_event_sender closing \r\n");
+            return retCode;
+        }
+#endif
 #ifdef HAS_WIFI_SUPPORT
         if( !(g_ascii_strcasecmp(currentEventName->str,"WiFiInterfaceStateEvent")))
         {
@@ -353,6 +372,18 @@ IARM_Result_t sendIARMEventPayload(GString* currentEventName, char *eventPayload
 
         g_message("IARM Event %d  retCode:%d", IARM_BUS_SYSMGR_EVENT_USB_MOUNT_CHANGED, retCode);
     }
+#ifdef HAS_MAINTENANCE_MANAGER
+    else if( !(g_ascii_strcasecmp(currentEventName->str,"MaintenanceMGR")))
+    {
+        g_message("IARM_event_sender entered for Maintenance Start time : %s\r\n",eventPayload);
+        IARM_Bus_MaintMGR_EventData_t eventData;
+        memset( &eventData, 0, sizeof(IARM_Bus_MaintMGR_EventData_t) );
+        strncpy(eventData.data.startTimeUpdate.start_time, eventPayload, sizeof(eventData.data.startTimeUpdate.start_time)-1);
+        eventData.data.startTimeUpdate.start_time[sizeof(eventData.data.startTimeUpdate.start_time)-1] = '\0';
+        g_message("startTimeUpdate.start_time : %s\r\n", eventData.data.startTimeUpdate.start_time);
+        IARM_Bus_BroadcastEvent(IARM_BUS_MAINTENANCE_MGR_NAME, (IARM_EventId_t)IARM_BUS_DCM_NEW_START_TIME_EVENT, (void *)&eventData, sizeof(eventData));
+    }
+#endif
         else {
 		g_message("There are no matching IARM events for %s",currentEventName->str);
 	}
