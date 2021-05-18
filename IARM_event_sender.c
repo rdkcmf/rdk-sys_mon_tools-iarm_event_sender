@@ -53,7 +53,8 @@ static struct eventList{
 	{"ChannelMapEvent",IARM_BUS_SYSMGR_SYSSTATE_CHANNELMAP},
 	{"NTPReceivedEvent",IARM_BUS_SYSMGR_SYSSTATE_TIME_SOURCE},
 	{"PartnerIdEvent",IARM_BUS_SYSMGR_SYSSTATE_PARTNERID_CHANGE},
-        {"FirmwareStateEvent",IARM_BUS_SYSMGR_SYSSTATE_FIRMWARE_UPDATE_STATE}
+        {"FirmwareStateEvent",IARM_BUS_SYSMGR_SYSSTATE_FIRMWARE_UPDATE_STATE},
+        {"IpmodeEvent",IARM_BUS_SYSMGR_SYSSTATE_IP_MODE}
 };
 
 #define EVENT_INTRUSION "IntrusionEvent"
@@ -384,6 +385,20 @@ IARM_Result_t sendIARMEventPayload(GString* currentEventName, char *eventPayload
         IARM_Bus_BroadcastEvent(IARM_BUS_MAINTENANCE_MGR_NAME, (IARM_EventId_t)IARM_BUS_DCM_NEW_START_TIME_EVENT, (void *)&eventData, sizeof(eventData));
     }
 #endif
+    else if ( !(g_ascii_strcasecmp(currentEventName->str,"IpmodeEvent")))
+    {
+	    IARM_Bus_SYSMgr_EventData_t eventData;
+	    eventData.data.systemStates.stateId = IARM_BUS_SYSMGR_SYSSTATE_IP_MODE;
+	    eventData.data.systemStates.state = 1;
+	    eventData.data.systemStates.error = 0;
+	    strncpy(eventData.data.systemStates.payload,eventPayload,sizeof(eventData.data.systemStates.payload));
+
+        retCode = IARM_Bus_BroadcastEvent(IARM_BUS_SYSMGR_NAME,
+                (IARM_EventId_t) IARM_BUS_SYSMGR_EVENT_SYSTEMSTATE, (void *)&eventData, sizeof(eventData));
+
+        g_message("IARM Event %d  retCode:%d", IARM_BUS_SYSMGR_EVENT_SYSTEMSTATE, retCode);
+
+    }
         else {
 		g_message("There are no matching IARM events for %s",currentEventName->str);
 	}
