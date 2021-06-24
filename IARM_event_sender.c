@@ -84,15 +84,13 @@ int main(int argc,char *argv[])
 
         if ( !(g_ascii_strcasecmp(currentEventName->str,"PeripheralUpgradeEvent")) )
         {
-            full_len=strlen(argv[3]) + strlen(argv[2]) + 1;
-            strncpy( eventPayload, argv[2], sizeof(eventPayload) );
-            strncat( eventPayload, ":", sizeof(eventPayload) );
-            strncat( eventPayload, argv[3], sizeof(eventPayload) );
+            full_len = snprintf(eventPayload, sizeof(eventPayload), "%s:%s", argv[2], argv[3]);
         }
         else
         {
             full_len=strlen(argv[3]);
             strncpy( eventPayload, argv[3], sizeof(eventPayload) );
+	    eventPayload[sizeof(eventPayload)-1] = '\0';
         }
 
         eventPayload[sizeof(eventPayload)-1]='\0'; // null terminated in case of overflow
@@ -105,6 +103,7 @@ int main(int argc,char *argv[])
             termptr = &eventPayload[sizeof(eventPayload)-(sizeof(JSON_TERM)-1)-3];
             *termptr++ = INTRU_ABREV;
             strncpy( termptr, JSON_TERM, sizeof(JSON_TERM)-1 );
+	    termptr[sizeof(JSON_TERM)-1] = '\0';
             eventPayload[sizeof(eventPayload)-1]='\0'; // null terminated just in case 
             // go ahead and send abreviated event now that it has valid josn termination
         }
@@ -306,7 +305,8 @@ IARM_Result_t sendIARMEventPayload(GString* currentEventName, char *eventPayload
 	if( !(g_ascii_strcasecmp(currentEventName->str,EVENT_INTRUSION )))
 	{
 		IARM_Bus_SYSMgr_IntrusionData_t intrusionEvent;
-		strncpy(intrusionEvent.intrusionData, eventPayload, sizeof(intrusionEvent.intrusionData) );
+		strncpy(intrusionEvent.intrusionData, eventPayload, sizeof(intrusionEvent.intrusionData)-1);
+		intrusionEvent.intrusionData[sizeof(intrusionEvent.intrusionData)-1] = '\0';
 		retCode=IARM_Bus_BroadcastEvent(IARM_BUS_SYSMGR_NAME, (IARM_EventId_t) IARM_BUS_SYSMGR_EVENT_INTRUSION, 
 						(void *)&intrusionEvent, sizeof(intrusionEvent));
 		g_message(">>>>> IARM %s  Event Name =%s,payload=%s",
@@ -391,7 +391,8 @@ IARM_Result_t sendIARMEventPayload(GString* currentEventName, char *eventPayload
 	    eventData.data.systemStates.stateId = IARM_BUS_SYSMGR_SYSSTATE_IP_MODE;
 	    eventData.data.systemStates.state = 1;
 	    eventData.data.systemStates.error = 0;
-	    strncpy(eventData.data.systemStates.payload,eventPayload,sizeof(eventData.data.systemStates.payload));
+	    strncpy(eventData.data.systemStates.payload,eventPayload,sizeof(eventData.data.systemStates.payload)-1);
+	    eventData.data.systemStates.payload[sizeof(eventData.data.systemStates.payload)-1] = '\0';  //CID:136370 - Buffer size warning
 
         retCode = IARM_Bus_BroadcastEvent(IARM_BUS_SYSMGR_NAME,
                 (IARM_EventId_t) IARM_BUS_SYSMGR_EVENT_SYSTEMSTATE, (void *)&eventData, sizeof(eventData));
