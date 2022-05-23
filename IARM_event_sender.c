@@ -385,6 +385,48 @@ IARM_Result_t sendIARMEventPayload(GString* currentEventName, char *eventPayload
         IARM_Bus_BroadcastEvent(IARM_BUS_MAINTENANCE_MGR_NAME, (IARM_EventId_t)IARM_BUS_DCM_NEW_START_TIME_EVENT, (void *)&eventData, sizeof(eventData));
     }
 #endif
+#ifdef PLATFORM_SUPPORTS_RDMMGR
+    else if( !(g_ascii_strcasecmp(currentEventName->str, "RDMAppStatusEvent")))
+    {
+        IARM_Bus_RDMMgr_EventData_t eventData;
+        memset(&eventData, 0, sizeof(IARM_Bus_RDMMgr_EventData_t));
+
+        /* Received payload is of the format - "pkg_name:<name>\npkg_version:<version>\npkg_inst_status:<status>\npkg_inst_path:<path>" */
+        /* Parse package info from payload */
+        char *nl_delim = "\n";
+        char *temp_ptr = NULL;
+        char *pkg_info = strdup(eventPayload);
+        char *pkg_data = strtok(pkg_info, nl_delim);
+
+        while (NULL != pkg_data)
+        {
+            temp_ptr = strchr(pkg_data, ':');
+            if (NULL != temp_ptr)
+            {
+                temp_ptr++;
+                if (NULL != strstr(pkg_data, RDM_PKG_NAME)) {
+                    strncpy(eventData.rdm_pkg_info.pkg_name, temp_ptr, RDM_PKG_NAME_MAX_SIZE - 1);
+                    eventData.rdm_pkg_info.pkg_name[RDM_PKG_NAME_MAX_SIZE - 1] = '\0';
+                } else if (NULL != strstr(pkg_data, RDM_PKG_VERSION)) {
+                    strncpy(eventData.rdm_pkg_info.pkg_version, temp_ptr, RDM_PKG_VERSION_MAX_SIZE - 1);
+                    eventData.rdm_pkg_info.pkg_version[RDM_PKG_VERSION_MAX_SIZE - 1] = '\0';
+                } else if (NULL != strstr(pkg_data, RDM_PKG_INST_PATH)) {
+                    strncpy(eventData.rdm_pkg_info.pkg_inst_path, temp_ptr, RDM_PKG_INST_PATH_MAX_SIZE - 1);
+                    eventData.rdm_pkg_info.pkg_inst_path[RDM_PKG_INST_PATH_MAX_SIZE - 1] = '\0';
+                } else if (NULL != strstr(pkg_data, RDM_PKG_INST_STATUS)) {
+                    eventData.rdm_pkg_info.pkg_inst_status = (IARM_RDMMgr_Status_t) atoi(temp_ptr);
+                } else {
+                    g_message("Unrecognized RDM package data: %s\n", pkg_data);
+                }
+            }
+            pkg_data = strtok(NULL, nl_delim);
+        }
+        free(pkg_info);
+
+        retCode = IARM_Bus_BroadcastEvent(IARM_BUS_RDMMGR_NAME, (IARM_EventId_t) IARM_BUS_RDMMGR_EVENT_APP_INSTALLATION_STATUS, (void *)&eventData, sizeof(eventData));
+        g_message(">>>>> IARM %s  Event  = %d",(retCode == IARM_RESULT_SUCCESS) ? "SUCCESS" : "FAILURE", eventData.rdm_pkg_info.pkg_inst_status);
+    }
+#endif
     else if ( !(g_ascii_strcasecmp(currentEventName->str,"IpmodeEvent")))
     {
 	    IARM_Bus_SYSMgr_EventData_t eventData;
