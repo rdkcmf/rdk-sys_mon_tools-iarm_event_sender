@@ -53,8 +53,9 @@ static struct eventList{
 	{"ChannelMapEvent",IARM_BUS_SYSMGR_SYSSTATE_CHANNELMAP},
 	{"NTPReceivedEvent",IARM_BUS_SYSMGR_SYSSTATE_TIME_SOURCE},
 	{"PartnerIdEvent",IARM_BUS_SYSMGR_SYSSTATE_PARTNERID_CHANGE},
-        {"FirmwareStateEvent",IARM_BUS_SYSMGR_SYSSTATE_FIRMWARE_UPDATE_STATE},
-        {"IpmodeEvent",IARM_BUS_SYSMGR_SYSSTATE_IP_MODE}
+    {"FirmwareStateEvent",IARM_BUS_SYSMGR_SYSSTATE_FIRMWARE_UPDATE_STATE},
+    {"IpmodeEvent",IARM_BUS_SYSMGR_SYSSTATE_IP_MODE},
+    {"usbdetected",IARM_BUS_SYSMGR_SYSSTATE_USB_DETECTED}
 };
 
 #define EVENT_INTRUSION "IntrusionEvent"
@@ -134,6 +135,21 @@ int main(int argc,char *argv[])
         eventPayload[n - 1] = '\0';
 
         g_message(">>>>> Send USBMountChangedEvent %s", eventPayload);
+
+        sendIARMEventPayload(currentEventName,eventPayload);
+
+        return 0;
+    }
+    else if (argc == 6 && !strcmp("usbdetected", argv[1]))
+    {
+        g_string_assign(currentEventName,argv[1]);
+
+        size_t n = 1024;
+        char eventPayload[n];
+        memset(eventPayload,'\0',n);
+        snprintf(eventPayload, n, "%s:%s:%s:%s", argv[2], argv[3], argv[4],argv[5]);
+
+        g_message(">>>>> Send USBDetected Event %s", eventPayload);
 
         sendIARMEventPayload(currentEventName,eventPayload);
 
@@ -442,7 +458,32 @@ IARM_Result_t sendIARMEventPayload(GString* currentEventName, char *eventPayload
         g_message("IARM Event %d  retCode:%d", IARM_BUS_SYSMGR_EVENT_SYSTEMSTATE, retCode);
 
     }
-        else {
+    else if ( !(g_ascii_strcasecmp(currentEventName->str,"usbdetected")))
+    {
+        IARM_Bus_SYSMgr_EventData_t eventData;
+        char* token = strtok(eventPayload,":");
+        if (! (g_ascii_strcasecmp(token,"add")))
+        {
+            eventData.data.usbData.inserted = 0;
+        }
+        if (! (g_ascii_strcasecmp(token,"remove")))
+        {
+            eventData.data.usbData.inserted = 1;
+        }
+        memset(eventData.data.usbData.vendor,'\0',sizeof(eventData.data.usbData.vendor));
+        memset(eventData.data.usbData.productid,'\0',sizeof(eventData.data.usbData.productid));
+        memset(eventData.data.usbData.devicename,'\0',sizeof(eventData.data.usbData.devicename));
+        strncpy(eventData.data.usbData.vendor, strtok(NULL,":"), sizeof(eventData.data.usbData.vendor) - 1);
+        strncpy(eventData.data.usbData.productid, strtok(NULL,":"), sizeof(eventData.data.usbData.productid) - 1);
+        strncpy(eventData.data.usbData.devicename, strtok(NULL,":"), sizeof(eventData.data.usbData.devicename) - 1);
+
+        retCode = IARM_Bus_BroadcastEvent(IARM_BUS_SYSMGR_NAME,
+                (IARM_EventId_t)IARM_BUS_SYSMGR_SYSSTATE_USB_DETECTED, (void *)&eventData, sizeof(eventData));
+
+        g_message("IARM Event %d  retCode:%d", IARM_BUS_SYSMGR_SYSSTATE_USB_DETECTED, retCode);
+    }
+    else 
+    {
 		g_message("There are no matching IARM events for %s",currentEventName->str);
 	}
 	IARM_Bus_Disconnect();
